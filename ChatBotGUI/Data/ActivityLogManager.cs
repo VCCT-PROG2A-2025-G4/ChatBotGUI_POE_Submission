@@ -87,3 +87,4 @@ namespace ChatBotGUI.Data
         public static IReadOnlyList<string> GetLog() => logEntries.AsReadOnly();
     }
 }
+// CI CHANGE
