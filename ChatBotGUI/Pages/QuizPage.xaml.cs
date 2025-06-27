@@ -16,6 +16,7 @@ namespace ChatBotGUI.Pages
         private string _currentCorrectDefinition;
         private Random _random = new Random();
 
+        // Constructor initializes UI and starts the quiz
         public QuizPage()
         {
             InitializeComponent();
@@ -23,12 +24,13 @@ namespace ChatBotGUI.Pages
             StartQuiz();
         }
 
+        // Load all cybersecurity terms (keys) from the dictionary
         private void LoadTerms()
         {
-            // Get all keys from the dictionary
             _terms = CyberSecurityDictionary.Program.keyValuePairs.Keys.ToList();
         }
 
+        // Initialize quiz state and start first question
         private void StartQuiz()
         {
             _score = 0;
@@ -39,22 +41,25 @@ namespace ChatBotGUI.Pages
             LoadQuestion();
         }
 
+        // Load the current quiz question and answer options
         private void LoadQuestion()
         {
             if (_currentQuestionIndex >= _terms.Count)
             {
-                // Quiz finished
+                // If no more questions, show final results
                 ShowFinalResults();
                 return;
             }
 
             string term = _terms[_currentQuestionIndex];
 
+            // Display the question with the current term
             QuestionTextBlock.Text = $"What is the correct definition of '{term}'?";
 
+            // Get the correct definition (first definition in list)
             _currentCorrectDefinition = CyberSecurityDictionary.Program.keyValuePairs[term][0];
 
-            // Select 3 wrong definitions randomly
+            // Select 3 random incorrect definitions from other terms
             var wrongDefinitions = _terms
                 .Where(t => t != term)
                 .OrderBy(x => _random.Next())
@@ -62,24 +67,26 @@ namespace ChatBotGUI.Pages
                 .Select(t => CyberSecurityDictionary.Program.keyValuePairs[t][0])
                 .ToList();
 
-            // Combine and shuffle options
+            // Combine correct and wrong definitions and shuffle them
             _currentOptions = wrongDefinitions.Append(_currentCorrectDefinition)
                 .OrderBy(x => _random.Next())
                 .ToList();
 
-            // Assign text to option buttons
+            // Assign shuffled definitions to the four option buttons
             OptionButton1.Content = _currentOptions[0];
             OptionButton2.Content = _currentOptions[1];
             OptionButton3.Content = _currentOptions[2];
             OptionButton4.Content = _currentOptions[3];
 
-            // Enable buttons
+            // Enable option buttons for user to select
             SetOptionButtonsEnabled(true);
 
+            // Clear feedback text and disable the Next button until an answer is selected
             FeedbackTextBlock.Text = "";
             NextButton.IsEnabled = false;
         }
 
+        // Enable or disable all option buttons
         private void SetOptionButtonsEnabled(bool isEnabled)
         {
             OptionButton1.IsEnabled = isEnabled;
@@ -88,6 +95,7 @@ namespace ChatBotGUI.Pages
             OptionButton4.IsEnabled = isEnabled;
         }
 
+        // Event handler for when an option button is clicked by the user
         private void OptionButton_Click(object sender, RoutedEventArgs e)
         {
             var clickedButton = sender as Button;
@@ -96,6 +104,7 @@ namespace ChatBotGUI.Pages
 
             string selectedDefinition = clickedButton.Content.ToString();
 
+            // Check if selected definition matches the correct one
             if (selectedDefinition == _currentCorrectDefinition)
             {
                 FeedbackTextBlock.Text = "Correct! 🎉";
@@ -107,10 +116,13 @@ namespace ChatBotGUI.Pages
                 FeedbackTextBlock.Text = $"Incorrect. The correct answer was:\n{_currentCorrectDefinition}";
             }
 
+            // Disable option buttons after an answer is selected
             SetOptionButtonsEnabled(false);
+            // Enable Next button to proceed to the next question
             NextButton.IsEnabled = true;
         }
 
+        // Event handler for Next button click to load the next question
         private void NextButton_Click(object sender, RoutedEventArgs e)
         {
             _currentQuestionIndex++;
@@ -118,9 +130,12 @@ namespace ChatBotGUI.Pages
             LoadQuestion();
         }
 
+        // Show final quiz results with personalized feedback
         private void ShowFinalResults()
         {
             QuestionTextBlock.Text = "Quiz Completed!";
+
+            // Provide feedback based on user's score
             FeedbackTextBlock.Text = _score switch
             {
                 var s when s == _terms.Count => "Perfect! You're a cybersecurity pro! 🏆",
@@ -128,10 +143,13 @@ namespace ChatBotGUI.Pages
                 _ => "Keep learning and practicing to improve your cybersecurity knowledge!"
             };
 
+            // Hide the option buttons as quiz is finished
             OptionButton1.Visibility = Visibility.Collapsed;
             OptionButton2.Visibility = Visibility.Collapsed;
             OptionButton3.Visibility = Visibility.Collapsed;
             OptionButton4.Visibility = Visibility.Collapsed;
+
+            // Disable the Next button since no more questions remain
             NextButton.IsEnabled = false;
         }
     }

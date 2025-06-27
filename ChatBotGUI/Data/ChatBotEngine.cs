@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using static ChatBotGUI.Data.CyberSecurityDictionary;
 
-
 namespace ChatBotEngine
 {
     public class ChatBotEngine
@@ -17,39 +16,47 @@ namespace ChatBotEngine
         private string pendingTaskTitle = null;
         private string pendingTaskDescription = null;
 
+        // Constructor initializes Random instance
         public ChatBotEngine()
         {
             random = new Random();
         }
 
-        // Returns the bot's response given user input
+        // Returns the bot's response given user input string
         public string GetChatbotResponse(string input)
         {
             input = input.ToLower();
 
             // --- New reminder handler at start ---
+            // If the bot is currently waiting for a reminder time input from the user
             if (awaitingReminder)
             {
+                // Check if input contains "remind me in" phrase
                 if (input.Contains("remind me in"))
                 {
+                    // Split input into words and locate number of days after "in"
                     var words = input.Split(' ');
                     int daysIndex = Array.IndexOf(words, "in") + 1;
 
+                    // Validate the index position
                     if (daysIndex <= 0 || daysIndex >= words.Length)
                         return "Please specify the number of days for the reminder, e.g. 'remind me in 3 days'.";
 
+                    // Try to parse the number of days
                     if (int.TryParse(words[daysIndex], out int days))
                     {
+                        // Get last task added from TaskManager
                         var lastTask = TaskManager.Tasks.LastOrDefault();
                         if (lastTask == null)
                             return "No recent task found to set a reminder.";
 
+                        // Set reminder date for the task
                         lastTask.ReminderDate = DateTime.Now.AddDays(days);
 
-                        // Log task added with reminder date using AddTaskAdded()
+                        // Log the task addition with reminder date
                         ChatBotGUI.Data.ActivityLogManager.AddTaskAdded(lastTask.Title, lastTask.ReminderDate);
 
-                        // Reset state
+                        // Reset state flags
                         awaitingReminder = false;
                         pendingTaskTitle = null;
                         pendingTaskDescription = null;
@@ -63,13 +70,14 @@ namespace ChatBotEngine
                 }
                 else
                 {
+                    // Prompt user to provide reminder input correctly
                     return "Please specify when to remind me using 'remind me in X days'.";
                 }
             }
 
             // --- Existing NLP Command Simulation for Task Assistant & Activity Log ---
 
-            // Handle "add task" anywhere in input
+            // Handle "add task" anywhere in user input
             if (input.Contains("add") && input.Contains("task"))
             {
                 int index = input.IndexOf("add task");
@@ -77,6 +85,7 @@ namespace ChatBotEngine
 
                 if (index >= 0)
                 {
+                    // Extract task title after "add task" phrase
                     string remainder = input.Substring(index + "add task".Length).Trim();
                     if (remainder.StartsWith("-"))
                         remainder = remainder.Substring(1).Trim();
@@ -87,8 +96,10 @@ namespace ChatBotEngine
                 if (string.IsNullOrEmpty(taskTitle))
                     return "I see you want to add a task. Please tell me the task title using 'add task - [title]'.";
 
+                // Description for the task to add
                 string description = $"Task '{taskTitle}' added.";
 
+                // Create new TaskItem instance with task details
                 var task = new TaskAssistantPage.TaskItem
                 {
                     Title = taskTitle,
@@ -97,6 +108,7 @@ namespace ChatBotEngine
                     ReminderDate = null
                 };
 
+                // Add task to TaskManager storage
                 TaskManager.AddTask(task);
 
                 // Log task added without reminder yet
@@ -110,7 +122,7 @@ namespace ChatBotEngine
                 return $"Task added with the description \"{description}\". Would you like a reminder?";
             }
 
-            // Handle reminder without awaiting (in case user just says reminder out of flow)
+            // Handle reminder input outside of awaiting flow
             if (input.Contains("remind me in"))
             {
                 var words = input.Split(' ');
@@ -137,7 +149,7 @@ namespace ChatBotEngine
                 }
             }
 
-            // Show activity log commands
+            // Show activity log commands recognized by keywords
             if (input.Contains("show activity log") || input.Contains("show log") || input.Contains("activity log"))
             {
                 var summary = ChatBotGUI.Data.ActivityLogManager.GetFormattedSummary();
@@ -148,11 +160,13 @@ namespace ChatBotEngine
 
             // --- Existing Sentiment and Chatbot Logic ---
 
+            // Check for specific sentiments in user input
             string[] sentiments = { "worried", "curious", "frustrated" };
             foreach (var sentiment in sentiments)
             {
                 if (input.Contains(sentiment))
                 {
+                    // Search dictionary keys to match cybersecurity terms mentioned
                     foreach (var pair in Program.keyValuePairs)
                     {
                         if (input.Contains(pair.Key.ToLower()))
@@ -169,6 +183,7 @@ namespace ChatBotEngine
                 }
             }
 
+            // Respond to "interested" keyword with acknowledgement of cybersecurity term
             if (input.Contains("interested"))
             {
                 foreach (var term in Program.keyValuePairs.Keys)
@@ -180,6 +195,7 @@ namespace ChatBotEngine
                 }
             }
 
+            // Basic greetings and common conversational responses
             if (input.Contains("hello") || input.Contains("hi") || input.Contains("hey"))
                 return "Hello there! I am the CyberSecurity Awareness ChatBot. How may I assist you today?";
 
@@ -210,13 +226,15 @@ namespace ChatBotEngine
             if (input.Contains("bye") || input.Contains("goodbye"))
                 return "Goodbye, Stay Safe Online!";
 
-            // Tips or definitions
+            // Check if user wants a tip or a definition on a cybersecurity term
             bool isTip = input.Contains("tip");
 
+            // Iterate through dictionary keys to match terms mentioned
             foreach (var pair in Program.keyValuePairs)
             {
                 if (input.Contains(pair.Key.ToLower()))
                 {
+                    // If user requested tips and tips exist for term, return a random tip
                     if (isTip && Program.keyTips.ContainsKey(pair.Key))
                     {
                         var tips = Program.keyTips[pair.Key];
@@ -225,6 +243,7 @@ namespace ChatBotEngine
                     }
                     else
                     {
+                        // Otherwise, return a random definition of the term
                         var definitions = pair.Value;
                         var definition = definitions[random.Next(definitions.Count)];
                         return $"{pair.Key} is defined as — {definition}";
@@ -232,24 +251,28 @@ namespace ChatBotEngine
                 }
             }
 
+            // Fallback response if input is not understood
             return "I'm not sure I understand and won't be able to respond, please try rephrasing?";
         }
 
-        // Starts the quiz - returns the user's score after quiz ends or early exit
+        // Starts the cybersecurity quiz, returns the user's score after finishing or early exit
         public int StartCybersecurityQuiz(Func<string> inputProvider, Action<string> outputHandler)
         {
+            // Log that quiz started
             ChatBotGUI.Data.ActivityLogManager.AddEntry("Quiz started.");
 
             var allTerms = Program.keyValuePairs.Keys.ToList();
             int score = 0;
 
+            // Iterate through each term to generate quiz questions
             foreach (var term in allTerms)
             {
                 outputHandler($"What is the correct definition of '{term}'?\n");
 
+                // Get the correct definition (first definition in the list)
                 var correctDefinition = Program.keyValuePairs[term][0];
 
-                // Choose 3 wrong definitions randomly
+                // Select 3 incorrect definitions randomly
                 var wrongDefinitions = allTerms
                     .Where(t => t != term)
                     .OrderBy(x => random.Next())
@@ -257,9 +280,10 @@ namespace ChatBotEngine
                     .Select(t => Program.keyValuePairs[t][0])
                     .ToList();
 
-                // Merge and shuffle options
+                // Combine correct and wrong definitions, then shuffle options
                 var options = wrongDefinitions.Append(correctDefinition).OrderBy(x => random.Next()).ToList();
 
+                // Output the answer choices
                 for (int i = 0; i < options.Count; i++)
                 {
                     outputHandler($"{i + 1}. {options[i]}");
@@ -268,6 +292,7 @@ namespace ChatBotEngine
                 string selectedInput;
                 int selectedIndex;
 
+                // Loop until valid input or exit command is received
                 while (true)
                 {
                     outputHandler("\nType the number of your choice or 'exit' to quit:");
@@ -297,6 +322,7 @@ namespace ChatBotEngine
 
                 var selectedDefinition = options[selectedIndex - 1];
 
+                // Check if selected answer is correct
                 if (selectedDefinition == correctDefinition)
                 {
                     outputHandler("Correct!\n");
@@ -308,6 +334,7 @@ namespace ChatBotEngine
                 }
             }
 
+            // Log final score in activity log
             ChatBotGUI.Data.ActivityLogManager.SetQuizQuestionsAnswered(score);
 
             return score;
